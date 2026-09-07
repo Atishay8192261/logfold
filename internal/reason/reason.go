@@ -38,6 +38,9 @@ type Request struct {
 	Goal  string
 	Steps []core.Step
 	Tools []tool.Spec
+
+	// Memories are notes recalled from long-term memory relevant to the goal.
+	Memories []string
 }
 
 // Reasoner decides what an agent does next.

@@ -12,11 +12,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/Atishay8192261/praxis/internal/core"
 	"github.com/Atishay8192261/praxis/internal/journal"
+	"github.com/Atishay8192261/praxis/internal/memory"
 	"github.com/Atishay8192261/praxis/internal/reason"
 	"github.com/Atishay8192261/praxis/internal/tool"
 )
@@ -29,6 +31,10 @@ type Agent struct {
 
 	// MaxSteps bounds the loop. Zero means the default (12).
 	MaxSteps int
+
+	// Memory, if set, gives the agent long-term recall: relevant notes are
+	// recalled at the start of a run and the outcome is stored at the end.
+	Memory *memory.Store
 
 	// OnEvent, if set, is called synchronously for every event appended, in
 	// order. Used for live CLI/UI output.
@@ -65,6 +71,8 @@ func (a *Agent) Run(ctx context.Context, goal string) (*core.RunState, error) {
 		return nil, err
 	}
 
+	memories := a.recall(goal)
+
 	seen := map[string]int{}
 
 	for step := 0; step < a.MaxSteps; step++ {
@@ -79,9 +87,10 @@ func (a *Agent) Run(ctx context.Context, goal string) (*core.RunState, error) {
 		}
 
 		dec, err := a.Reasoner.Next(ctx, reason.Request{
-			Goal:  goal,
-			Steps: state.Steps,
-			Tools: a.Tools.Specs(),
+			Goal:     goal,
+			Steps:    state.Steps,
+			Tools:    a.Tools.Specs(),
+			Memories: memories,
 		})
 		if err != nil {
 			_ = a.emit(core.KindError, core.ErrorData{Error: "reasoner: " + err.Error()})
@@ -94,6 +103,7 @@ func (a *Agent) Run(ctx context.Context, goal string) (*core.RunState, error) {
 
 		if dec.IsFinal() {
 			_ = a.emit(core.KindFinal, core.FinalData{Result: dec.Final})
+			a.remember(goal, dec.Final)
 			return a.Journal.State()
 		}
 
@@ -124,6 +134,31 @@ func (a *Agent) Run(ctx context.Context, goal string) (*core.RunState, error) {
 		Error: fmt.Sprintf("step budget (%d) exhausted before reaching a conclusion", a.MaxSteps),
 	})
 	return a.Journal.State()
+}
+
+// recall pulls relevant notes from long-term memory and announces them.
+func (a *Agent) recall(goal string) []string {
+	if a.Memory == nil || a.Memory.Len() == 0 {
+		return nil
+	}
+	var notes []string
+	for _, h := range a.Memory.Search(goal, 3) {
+		notes = append(notes, h.Record.Text)
+	}
+	if len(notes) > 0 {
+		_ = a.emit(core.KindPlan, core.PlanData{
+			Thought: fmt.Sprintf("Recalled %d related note(s) from memory.", len(notes)),
+		})
+	}
+	return notes
+}
+
+// remember stores a run's outcome for future recall.
+func (a *Agent) remember(goal, result string) {
+	if a.Memory == nil || strings.TrimSpace(result) == "" {
+		return
+	}
+	a.Memory.Add(result, map[string]string{"goal": goal})
 }
 
 func (a *Agent) emit(kind string, data any) error {

@@ -137,6 +137,13 @@ Rules:
 func (m *HTTPModel) userPrompt(req Request) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "GOAL: %s\n\n", req.Goal)
+	if len(req.Memories) > 0 {
+		b.WriteString("Relevant notes from past runs:\n")
+		for _, note := range req.Memories {
+			fmt.Fprintf(&b, "- %s\n", note)
+		}
+		b.WriteString("\n")
+	}
 	if len(req.Steps) == 0 {
 		b.WriteString("No actions taken yet. Decide the first action.\n")
 		return b.String()

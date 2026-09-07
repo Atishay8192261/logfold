@@ -19,10 +19,13 @@ import (
 	"github.com/Atishay8192261/praxis/internal/agent"
 	"github.com/Atishay8192261/praxis/internal/core"
 	"github.com/Atishay8192261/praxis/internal/journal"
+	"github.com/Atishay8192261/praxis/internal/memory"
+	"github.com/Atishay8192261/praxis/internal/playbook"
 	"github.com/Atishay8192261/praxis/internal/reason"
 	"github.com/Atishay8192261/praxis/internal/sandbox"
 	"github.com/Atishay8192261/praxis/internal/tool"
 	"github.com/Atishay8192261/praxis/internal/tools/devops"
+	"github.com/Atishay8192261/praxis/internal/tools/mem"
 )
 
 const version = "0.1.0"
@@ -38,6 +41,10 @@ func main() {
 		runCommand(args[1:])
 	case "serve":
 		serveCommand(args[1:])
+	case "memory":
+		memoryCommand(args[1:])
+	case "scan":
+		scanCommand(args[1:])
 	case "version", "--version", "-v":
 		fmt.Printf("praxis %s\n", version)
 	case "help", "--help", "-h":
@@ -57,6 +64,7 @@ func runCommand(args []string) {
 	allow := fs.String("allow", "", "comma-separated commands run_cmd may execute")
 	journalPath := fs.String("journal", "", "write the run journal (JSONL) to this path")
 	backend := fs.String("backend", "auto", "reasoner backend: auto|heuristic|model")
+	memPath := fs.String("memory", "", "long-term memory file to enable recall across runs")
 	quiet := fs.Bool("quiet", false, "only print the final result")
 	fs.Parse(args)
 
@@ -79,6 +87,15 @@ func runCommand(args []string) {
 	reg.MaxAttempts = 2
 	devops.Register(reg, sb)
 
+	var memStore *memory.Store
+	if *memPath != "" {
+		memStore, err = memory.LoadStore(*memPath, 0)
+		if err != nil {
+			fatal("memory: %v", err)
+		}
+		mem.Register(reg, memStore)
+	}
+
 	r := selectBackend(*backend)
 
 	var sink *os.File
@@ -97,6 +114,7 @@ func runCommand(args []string) {
 	}
 
 	ag := agent.New(r, reg, j, agent.Options{MaxSteps: *maxSteps})
+	ag.Memory = memStore
 	if !*quiet {
 		ag.OnEvent = printEvent
 	}
@@ -121,6 +139,12 @@ func runCommand(args []string) {
 		fatal("run: %v", err)
 	}
 
+	if memStore != nil {
+		if err := memStore.Save(*memPath); err != nil {
+			fmt.Fprintf(os.Stderr, "praxis: warning: could not save memory: %v\n", err)
+		}
+	}
+
 	if *quiet {
 		fmt.Println(state.Result)
 	} else {
@@ -134,6 +158,86 @@ func runCommand(args []string) {
 
 	if state.Status != core.StatusSuccess {
 		os.Exit(1)
+	}
+}
+
+func scanCommand(args []string) {
+	fs := flag.NewFlagSet("scan", flag.ExitOnError)
+	workspace := fs.String("C", ".", "workspace directory (sandbox root)")
+	quiet := fs.Bool("quiet", false, "print only the report")
+	fs.Parse(args)
+
+	sb, err := sandbox.New(*workspace)
+	if err != nil {
+		fatal("workspace: %v", err)
+	}
+	reg := tool.NewRegistry()
+	reg.MaxAttempts = 2
+	devops.Register(reg, sb)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	observer := func(id, phase string) {
+		if !*quiet && phase == "start" {
+			fmt.Printf("▸ %s\n", id)
+		}
+	}
+
+	report, path, err := playbook.RunScan(ctx, reg, observer)
+	if err != nil {
+		fatal("scan: %v", err)
+	}
+	if !*quiet {
+		fmt.Println(strings.Repeat("-", 60))
+	}
+	fmt.Println(report)
+	if !*quiet {
+		fmt.Printf("\ngraph: %s\n", strings.Join(path, " -> "))
+	}
+}
+
+func memoryCommand(args []string) {
+	if len(args) == 0 {
+		fatal("usage: praxis memory <add|search> [flags] \"<text>\"")
+	}
+	sub, rest := args[0], args[1:]
+	fs := flag.NewFlagSet("memory", flag.ExitOnError)
+	path := fs.String("memory", "praxis-memory.json", "memory file path")
+	k := fs.Int("k", 5, "number of results for search")
+	fs.Parse(rest)
+
+	store, err := memory.LoadStore(*path, 0)
+	if err != nil {
+		fatal("memory: %v", err)
+	}
+
+	switch sub {
+	case "add":
+		text := strings.TrimSpace(strings.Join(fs.Args(), " "))
+		if text == "" {
+			fatal("usage: praxis memory add \"<text>\"")
+		}
+		id := store.Add(text, nil)
+		if err := store.Save(*path); err != nil {
+			fatal("save: %v", err)
+		}
+		fmt.Printf("stored memory #%d in %s\n", id, *path)
+	case "search":
+		q := strings.TrimSpace(strings.Join(fs.Args(), " "))
+		if q == "" {
+			fatal("usage: praxis memory search \"<query>\"")
+		}
+		hits := store.Search(q, *k)
+		if len(hits) == 0 {
+			fmt.Println("(no memories)")
+			return
+		}
+		for _, h := range hits {
+			fmt.Printf("[%.3f] %s\n", h.Score, h.Record.Text)
+		}
+	default:
+		fatal("unknown memory subcommand %q (use add|search)", sub)
 	}
 }
 
@@ -215,10 +319,13 @@ Usage:
   praxis <command> [arguments]
 
 Commands:
-  run "<goal>"   run the DevOps agent on a goal (headless)
-  serve          launch the web workbench (default :7777)
-  version        print version
-  help           show this help
+  run "<goal>"          run the DevOps agent on a goal (headless)
+  scan                  fast parallel, model-free workspace triage (graph playbook)
+  memory add "<text>"   store a note in long-term memory
+  memory search "<q>"   search long-term memory
+  serve                 launch the web workbench (default :7777)
+  version               print version
+  help                  show this help
 
 run flags:
   -C <dir>        workspace directory / sandbox root (default ".")
@@ -226,6 +333,7 @@ run flags:
   -dry-run        describe mutating actions instead of performing them
   -allow <list>   comma-separated commands run_cmd may execute
   -journal <path> write the run journal (JSONL) for replay
+  -memory <path>  long-term memory file to recall/store across runs
   -backend <b>    auto|heuristic|model (default auto)
   -quiet          print only the final result
 
