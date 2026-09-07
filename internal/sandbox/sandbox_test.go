@@ -60,6 +60,52 @@ func TestRunAllowlistAndDryRun(t *testing.T) {
 	}
 }
 
+func TestSymlinkEscapeRejected(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "secret.txt"), []byte("secret"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A symlink inside the workspace pointing outside it.
+	if err := os.Symlink(outside, filepath.Join(root, "link")); err != nil {
+		t.Fatal(err)
+	}
+	sb, err := New(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sb.Resolve("link/secret.txt"); err == nil {
+		t.Fatal("resolving through a symlink out of the workspace must be rejected")
+	}
+	// A symlink that stays inside the workspace is fine.
+	if err := os.WriteFile(filepath.Join(root, "real.txt"), []byte("ok"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(root, "real.txt"), filepath.Join(root, "inside")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sb.Resolve("inside"); err != nil {
+		t.Fatalf("an in-workspace symlink should resolve: %v", err)
+	}
+}
+
+func TestAllowlistRejectsPathSeparators(t *testing.T) {
+	sb, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sb.Allow = []string{"git"}
+	if sb.Allowed("./tools/git") {
+		t.Fatal("a relative path must not be allowed (only bare command names)")
+	}
+	if sb.Allowed("/usr/bin/git") {
+		t.Fatal("an absolute path must not be allowed")
+	}
+	if !sb.Allowed("git") {
+		t.Fatal("the bare allowlisted name should be allowed")
+	}
+}
+
 func TestNewRejectsNonDir(t *testing.T) {
 	f := filepath.Join(t.TempDir(), "afile")
 	if err := os.WriteFile(f, []byte("x"), 0o644); err != nil {

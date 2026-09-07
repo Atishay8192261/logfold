@@ -184,41 +184,62 @@ func (m *HTTPModel) truncate(s string) string {
 }
 
 // parseDecision extracts the agent's decision from a model response. It is
-// forgiving: it finds the first balanced JSON object even if the model wraps it
-// in prose or code fences, and treats free text as a final answer.
+// forgiving: it scans every balanced JSON object in the response (even when the
+// model wraps its answer in prose or code fences, or restates the format as an
+// example first) and returns the decision from the LAST object that carries a
+// real action or a non-empty final. Free text with no usable object becomes a
+// final answer.
 func parseDecision(content string) Decision {
-	js, ok := extractJSONObject(content)
-	if !ok {
-		return Decision{Final: strings.TrimSpace(content)}
-	}
-	var ra struct {
-		Thought string `json:"thought"`
-		Action  *struct {
-			Tool string         `json:"tool"`
-			Args map[string]any `json:"args"`
-		} `json:"action"`
-		Final string `json:"final"`
-	}
-	if err := json.Unmarshal([]byte(js), &ra); err != nil {
-		return Decision{Final: strings.TrimSpace(content)}
-	}
-	if ra.Action != nil && ra.Action.Tool != "" {
-		args := ra.Action.Args
-		if args == nil {
-			args = map[string]any{}
+	var best *Decision
+	for _, js := range candidateObjects(content) {
+		var ra struct {
+			Thought string `json:"thought"`
+			Action  *struct {
+				Tool string         `json:"tool"`
+				Args map[string]any `json:"args"`
+			} `json:"action"`
+			Final string `json:"final"`
 		}
-		return Decision{Thought: ra.Thought, ToolCall: &core.ToolCall{Name: ra.Action.Tool, Args: args}}
+		if err := json.Unmarshal([]byte(js), &ra); err != nil {
+			continue
+		}
+		if ra.Action != nil && ra.Action.Tool != "" {
+			args := ra.Action.Args
+			if args == nil {
+				args = map[string]any{}
+			}
+			d := Decision{Thought: ra.Thought, ToolCall: &core.ToolCall{Name: ra.Action.Tool, Args: args}}
+			best = &d
+		} else if strings.TrimSpace(ra.Final) != "" {
+			d := Decision{Thought: ra.Thought, Final: ra.Final}
+			best = &d
+		}
 	}
-	return Decision{Thought: ra.Thought, Final: ra.Final}
+	if best != nil {
+		return *best
+	}
+	return Decision{Final: strings.TrimSpace(content)}
 }
 
-// extractJSONObject returns the first balanced {...} object in s, correctly
-// skipping braces inside strings.
-func extractJSONObject(s string) (string, bool) {
-	start := strings.IndexByte(s, '{')
-	if start < 0 {
-		return "", false
+// candidateObjects returns every balanced {...} object in s, in order of
+// appearance (including nested ones, which simply fail to match the decision
+// shape and are skipped by the caller).
+func candidateObjects(s string) []string {
+	var out []string
+	for i := 0; i < len(s); i++ {
+		if s[i] != '{' {
+			continue
+		}
+		if obj, ok := balancedFrom(s, i); ok {
+			out = append(out, obj)
+		}
 	}
+	return out
+}
+
+// balancedFrom returns the balanced {...} object beginning at index start,
+// correctly skipping braces inside strings.
+func balancedFrom(s string, start int) (string, bool) {
 	depth, inStr, esc := 0, false, false
 	for i := start; i < len(s); i++ {
 		c := s[i]

@@ -36,6 +36,24 @@ func TestParseDecision(t *testing.T) {
 	}
 }
 
+func TestParseDecisionPrefersRealOverDecoyExample(t *testing.T) {
+	// The model restates the format as an example, then gives its real action.
+	content := `Reply like {"thought":"...","final":"..."}. My answer: {"thought":"looking","action":{"tool":"read_file","args":{"path":"a.conf"}}}`
+	d := parseDecision(content)
+	if d.ToolCall == nil || d.ToolCall.Name != "read_file" {
+		t.Fatalf("decoy example won over the real action: %+v", d)
+	}
+}
+
+func TestParseDecisionSurvivesStrayBrace(t *testing.T) {
+	// A stray '{' in prose before the real object must not defeat extraction.
+	content := "The config has a { character. Final answer:\n{\"final\":\"the port was wrong\"}"
+	d := parseDecision(content)
+	if !d.IsFinal() || d.Final != "the port was wrong" {
+		t.Fatalf("stray brace defeated extraction: %+v", d)
+	}
+}
+
 func TestHTTPModelNext(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/chat/completions" {

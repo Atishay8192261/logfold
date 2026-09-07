@@ -79,6 +79,36 @@ func TestPersistReloadDeterminism(t *testing.T) {
 	}
 }
 
+func TestLoadToleratesTruncatedFinalLine(t *testing.T) {
+	var buf bytes.Buffer
+	j := New(&buf)
+	if _, err := j.Append(core.KindRunStarted, core.RunStartedData{ID: "r", Goal: "g"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := j.Append(core.KindPlan, core.PlanData{Thought: "t"}); err != nil {
+		t.Fatal(err)
+	}
+	// Simulate a crash mid-append: a partial final line with no closing brace.
+	buf.WriteString(`{"seq":2,"kind":"tool_ca`)
+
+	events, err := Load(&buf)
+	if err != nil {
+		t.Fatalf("Load should tolerate a truncated final line: %v", err)
+	}
+	if len(events) != 2 {
+		t.Fatalf("want the 2 complete events, got %d", len(events))
+	}
+}
+
+func TestLoadRejectsInteriorCorruption(t *testing.T) {
+	var buf bytes.Buffer
+	buf.WriteString("{ this is not json }\n")
+	buf.WriteString(`{"seq":1,"kind":"plan","data":{"thought":"x"}}` + "\n")
+	if _, err := Load(&buf); err == nil {
+		t.Fatal("a malformed interior line should be reported as corruption")
+	}
+}
+
 func TestSubscribeReceivesLiveEvents(t *testing.T) {
 	j := New(nil)
 	_, _ = j.Append(core.KindRunStarted, core.RunStartedData{ID: "r", Goal: "g"})

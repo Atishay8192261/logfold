@@ -12,6 +12,7 @@ package journal
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -58,9 +59,10 @@ func (j *Journal) Append(kind string, payload any) (core.Event, error) {
 		Kind: kind,
 		Data: data,
 	}
-	j.seq++
-	j.events = append(j.events, ev)
 
+	// Persist before committing: only after the durable write succeeds do we
+	// advance the sequence and record the event in memory, so a failed sink
+	// write can never make the in-memory log diverge from the file.
 	if j.sink != nil {
 		line, err := json.Marshal(ev)
 		if err != nil {
@@ -70,6 +72,9 @@ func (j *Journal) Append(kind string, payload any) (core.Event, error) {
 			return core.Event{}, fmt.Errorf("write event: %w", err)
 		}
 	}
+
+	j.seq++
+	j.events = append(j.events, ev)
 
 	// Fan out to live subscribers. Never block the writer: if a subscriber's
 	// buffer is full it simply misses the live event (it can still catch up
@@ -130,26 +135,38 @@ func (j *Journal) Subscribe() (snapshot []core.Event, live <-chan core.Event, ca
 }
 
 // Load reads a JSONL stream (as written by a sink) back into an event slice.
+// A truncated or malformed *final* line — the usual artifact of a crash or a
+// disk-full write mid-append — is tolerated: everything fully written before it
+// is returned, so a crashed run still replays. A malformed *interior* line is a
+// real corruption and is reported as an error.
 func Load(r io.Reader) ([]core.Event, error) {
-	var events []core.Event
 	sc := bufio.NewScanner(r)
 	// Journal lines can be large (tool output); grow the buffer generously.
 	sc.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
-	line := 0
+
+	var lines [][]byte
 	for sc.Scan() {
-		line++
-		raw := sc.Bytes()
-		if len(raw) == 0 {
+		b := make([]byte, len(sc.Bytes()))
+		copy(b, sc.Bytes())
+		lines = append(lines, b)
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("read journal: %w", err)
+	}
+
+	var events []core.Event
+	for i, raw := range lines {
+		if len(bytes.TrimSpace(raw)) == 0 {
 			continue
 		}
 		var ev core.Event
 		if err := json.Unmarshal(raw, &ev); err != nil {
-			return nil, fmt.Errorf("parse journal line %d: %w", line, err)
+			if i == len(lines)-1 {
+				break // tolerate a truncated trailing line
+			}
+			return nil, fmt.Errorf("parse journal line %d: %w", i+1, err)
 		}
 		events = append(events, ev)
-	}
-	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf("read journal: %w", err)
 	}
 	return events, nil
 }

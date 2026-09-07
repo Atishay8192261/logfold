@@ -9,6 +9,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -52,7 +53,18 @@ func (t *readFile) Invoke(_ context.Context, a tool.Args) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	b, err := os.ReadFile(abs)
+	f, err := os.Open(abs)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	lim := t.sb.MaxOutput
+	if lim <= 0 {
+		lim = 1 << 20
+	}
+	// Read at most one byte past the cap so we never pull a huge file into RAM;
+	// Cap then truncates to the limit with a marker.
+	b, err := io.ReadAll(io.LimitReader(f, int64(lim)+1))
 	if err != nil {
 		return "", err
 	}
@@ -154,7 +166,11 @@ func (t *grep) Invoke(_ context.Context, a tool.Args) (string, error) {
 		for sc.Scan() {
 			line++
 			if re.MatchString(sc.Text()) {
-				matches = append(matches, fmt.Sprintf("%s:%d: %s", rel, line, strings.TrimSpace(sc.Text())))
+				text := strings.TrimSpace(sc.Text())
+				if len(text) > 500 {
+					text = text[:500] + "…"
+				}
+				matches = append(matches, fmt.Sprintf("%s:%d: %s", rel, line, text))
 				if len(matches) >= maxMatches {
 					return fs.SkipAll
 				}
@@ -178,7 +194,7 @@ func (t *grep) Invoke(_ context.Context, a tool.Args) (string, error) {
 	if len(matches) == 0 {
 		return "(no matches)", nil
 	}
-	return strings.Join(matches, "\n"), nil
+	return string(t.sb.Cap([]byte(strings.Join(matches, "\n")))), nil
 }
 
 // --- tail_log ---
@@ -198,7 +214,22 @@ func (t *tailLog) Invoke(_ context.Context, a tool.Args) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	b, err := os.ReadFile(abs)
+	f, err := os.Open(abs)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	// Only read the trailing window, so a multi-GB log doesn't come into RAM.
+	win := int64(t.sb.MaxOutput)
+	if win <= 0 {
+		win = 1 << 20
+	}
+	if fi, err := f.Stat(); err == nil && fi.Size() > win {
+		if _, err := f.Seek(fi.Size()-win, io.SeekStart); err != nil {
+			return "", err
+		}
+	}
+	b, err := io.ReadAll(f)
 	if err != nil {
 		return "", err
 	}

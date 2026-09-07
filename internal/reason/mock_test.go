@@ -68,3 +68,50 @@ func TestHeuristicConcludesWithDiagnosis(t *testing.T) {
 		t.Fatalf("diagnosis missing for 'refused':\n%s", d.Final)
 	}
 }
+
+func TestHeuristicRewritesPortNotIPOctet(t *testing.T) {
+	b := &transcript{}
+	b.call("list_dir", map[string]any{"path": "."}, "file  30  nginx.conf\n")
+	b.call("read_file", map[string]any{"path": "nginx.conf"}, "listen 127.0.0.1:9090;\n")
+	b.call("grep", map[string]any{"pattern": errKeywords, "path": "."}, "(no matches)")
+
+	d, err := NewHeuristic().Next(context.Background(), Request{Goal: "fix the gateway to listen on port 8080", Steps: b.steps})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.ToolCall == nil || d.ToolCall.Name != "write_file" {
+		t.Fatalf("expected a write_file fix, got %+v", d)
+	}
+	content, _ := d.ToolCall.Args["content"].(string)
+	if !strings.Contains(content, "127.0.0.1:8080") {
+		t.Fatalf("port not rewritten correctly: %q", content)
+	}
+	if strings.Contains(content, "8080.0.0.1") {
+		t.Fatalf("IP octet was corrupted: %q", content)
+	}
+}
+
+func TestHeuristicDoesNotRewriteCorrectConfig(t *testing.T) {
+	b := &transcript{}
+	b.call("list_dir", map[string]any{"path": "."}, "file  30  nginx.conf\n")
+	b.call("read_file", map[string]any{"path": "nginx.conf"}, "listen 127.0.0.1:8080;\n")
+	b.call("grep", map[string]any{"pattern": errKeywords, "path": "."}, "(no matches)")
+
+	d, _ := NewHeuristic().Next(context.Background(), Request{Goal: "fix the gateway to listen on port 8080", Steps: b.steps})
+	if !d.IsFinal() {
+		t.Fatalf("an already-correct config must not be rewritten, got tool call %+v", d.ToolCall)
+	}
+}
+
+func TestExpectedPortIgnoresClockTimes(t *testing.T) {
+	cases := map[string]string{
+		"at 12:30 restart and fix port 8080": "8080",
+		"the service on :8080 is down":       "8080",
+		"restart the box at 12:30":           "", // a time is not a port
+	}
+	for goal, want := range cases {
+		if got := expectedPort(goal); got != want {
+			t.Fatalf("expectedPort(%q) = %q, want %q", goal, got, want)
+		}
+	}
+}

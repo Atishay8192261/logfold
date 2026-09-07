@@ -83,11 +83,12 @@ type view struct {
 	inspected  []string
 	errorLines []string
 	configs    map[string]string // config file path -> contents
-	wrote      map[string]bool   // config files the agent has already edited
+	wrote      map[string]bool   // config files the agent has attempted to edit
+	fixedOK    map[string]bool   // edits that actually succeeded
 }
 
 func analyze(steps []core.Step) view {
-	v := view{read: map[string]bool{}, tailed: map[string]bool{}, configs: map[string]string{}, wrote: map[string]bool{}}
+	v := view{read: map[string]bool{}, tailed: map[string]bool{}, configs: map[string]string{}, wrote: map[string]bool{}, fixedOK: map[string]bool{}}
 	calls := map[string]*core.ToolCall{}
 	for i := range steps {
 		if steps[i].Kind == core.StepToolCall && steps[i].ToolCall != nil {
@@ -129,8 +130,11 @@ func analyze(steps []core.Step) view {
 			}
 		case "write_file":
 			p, _ := call.Args["path"].(string)
+			// Mark attempted regardless of success so a failing write is not
+			// re-proposed forever; track success separately for the summary.
+			v.wrote[p] = true
 			if !s.Obs.Failed() {
-				v.wrote[p] = true
+				v.fixedOK[p] = true
 			}
 		}
 	}
@@ -186,13 +190,23 @@ func (v view) summary(goal string) string {
 		b.WriteString("\n" + fix + "\n")
 	}
 
-	if len(v.wrote) > 0 {
-		files := make([]string, 0, len(v.wrote))
-		for f := range v.wrote {
+	if len(v.fixedOK) > 0 {
+		files := make([]string, 0, len(v.fixedOK))
+		for f := range v.fixedOK {
 			files = append(files, f)
 		}
 		sort.Strings(files)
 		fmt.Fprintf(&b, "\nFix applied: rewrote %s to the expected port. Restart the service and re-check the health endpoint to confirm.\n", strings.Join(files, ", "))
+	}
+	var failed []string
+	for f := range v.wrote {
+		if !v.fixedOK[f] {
+			failed = append(failed, f)
+		}
+	}
+	if len(failed) > 0 {
+		sort.Strings(failed)
+		fmt.Fprintf(&b, "\nAttempted to edit %s but the write failed (check permissions).\n", strings.Join(failed, ", "))
 	}
 
 	return strings.TrimRight(b.String(), "\n")
@@ -213,11 +227,10 @@ func wantsFix(goal string) bool {
 // proposeFix returns a config file path and its corrected contents when a
 // port mismatch can be repaired, or empty strings otherwise.
 func (v view) proposeFix(goal string) (path, content string) {
-	m := goalPortRe.FindStringSubmatch(goal)
-	if m == nil {
+	expected := expectedPort(goal)
+	if expected == "" {
 		return "", ""
 	}
-	expected := m[1]
 	for _, f := range dedupe(v.inspected) {
 		c, ok := v.configs[f]
 		if !ok {
@@ -257,18 +270,33 @@ func rewritePort(content, expected string) (string, string, bool) {
 }
 
 var (
-	portRe     = regexp.MustCompile(`(?i)(?:listen|port)[^0-9]{0,4}([0-9]{2,5})`)
-	goalPortRe = regexp.MustCompile(`(?::|port\s+)([0-9]{2,5})`)
+	// portRe captures the actual port from a config directive, consuming an
+	// optional "host:" (e.g. 127.0.0.1:) so an IP octet is never mistaken for
+	// the port. Group 1 is the port.
+	portRe = regexp.MustCompile(`(?i)(?:listen|port)\s*[=:]?\s*(?:[0-9]{1,3}(?:\.[0-9]{1,3}){3}:)?([0-9]{2,5})`)
+	// A goal's expected port: prefer an explicit "port <n>"; only fall back to
+	// a bare ":<n>" for 4-5 digit numbers so clock times (12:30) aren't caught.
+	goalPortKeywordRe = regexp.MustCompile(`(?i)port[\s=:#]*([0-9]{2,5})`)
+	goalPortColonRe   = regexp.MustCompile(`:([0-9]{4,5})\b`)
 )
+
+func expectedPort(goal string) string {
+	if m := goalPortKeywordRe.FindStringSubmatch(goal); m != nil {
+		return m[1]
+	}
+	if m := goalPortColonRe.FindStringSubmatch(goal); m != nil {
+		return m[1]
+	}
+	return ""
+}
 
 // portMismatch looks for a configured port that differs from the port the goal
 // mentions, and returns a concrete recommended fix if it finds one.
 func (v view) portMismatch(goal string) string {
-	m := goalPortRe.FindStringSubmatch(goal)
-	if m == nil {
+	expected := expectedPort(goal)
+	if expected == "" {
 		return ""
 	}
-	expected := m[1]
 	// Iterate configs in inspection order for deterministic output.
 	for _, f := range dedupe(v.inspected) {
 		content, ok := v.configs[f]

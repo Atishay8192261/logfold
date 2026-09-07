@@ -102,6 +102,11 @@ func (a *Agent) Run(ctx context.Context, goal string) (*core.RunState, error) {
 		}
 
 		if dec.IsFinal() {
+			if strings.TrimSpace(dec.Final) == "" {
+				// A "final" with no answer is a failed run, not a success.
+				_ = a.emit(core.KindError, core.ErrorData{Error: "reasoner produced no answer"})
+				return a.Journal.State()
+			}
 			_ = a.emit(core.KindFinal, core.FinalData{Result: dec.Final})
 			a.remember(goal, dec.Final)
 			return a.Journal.State()

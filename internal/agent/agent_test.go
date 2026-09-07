@@ -154,6 +154,25 @@ func TestAgentEmitsEventsInOrder(t *testing.T) {
 	}
 }
 
+type emptyFinalReasoner struct{}
+
+func (emptyFinalReasoner) Name() string { return "empty" }
+func (emptyFinalReasoner) Next(context.Context, reason.Request) (reason.Decision, error) {
+	return reason.Decision{Final: "   "}, nil // whitespace-only "answer"
+}
+
+func TestEmptyFinalIsRecordedAsFailure(t *testing.T) {
+	j := journal.New(nil)
+	a := New(emptyFinalReasoner{}, tool.NewRegistry(), j, Options{MaxSteps: 3})
+	state, err := a.Run(context.Background(), "some goal")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Status != core.StatusFailed {
+		t.Fatalf("an empty final answer must be a failed run, got %q", state.Status)
+	}
+}
+
 func dump(s *core.RunState) string {
 	var b strings.Builder
 	for _, st := range s.Steps {
