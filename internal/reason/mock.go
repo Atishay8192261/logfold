@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/Atishay8192261/praxis/internal/core"
@@ -56,7 +57,15 @@ func (h *Heuristic) Next(_ context.Context, req Request) (Decision, error) {
 			"grep", map[string]any{"pattern": errKeywords, "path": "."}), nil
 	}
 
-	// 5. Conclude.
+	// 5. If the goal asks for a fix and we found a concrete one, apply it.
+	if wantsFix(req.Goal) {
+		if f, nc := v.proposeFix(req.Goal); f != "" && !v.wrote[f] {
+			return act(fmt.Sprintf("Apply the fix: correct the port in %q.", f),
+				"write_file", map[string]any{"path": f, "content": nc}), nil
+		}
+	}
+
+	// 6. Conclude.
 	return Decision{Thought: "Enough evidence gathered; summarizing findings.", Final: v.summary(req.Goal)}, nil
 }
 
@@ -73,10 +82,12 @@ type view struct {
 	grepped    bool
 	inspected  []string
 	errorLines []string
+	configs    map[string]string // config file path -> contents
+	wrote      map[string]bool   // config files the agent has already edited
 }
 
 func analyze(steps []core.Step) view {
-	v := view{read: map[string]bool{}, tailed: map[string]bool{}}
+	v := view{read: map[string]bool{}, tailed: map[string]bool{}, configs: map[string]string{}, wrote: map[string]bool{}}
 	calls := map[string]*core.ToolCall{}
 	for i := range steps {
 		if steps[i].Kind == core.StepToolCall && steps[i].ToolCall != nil {
@@ -102,6 +113,9 @@ func analyze(steps []core.Step) view {
 			p, _ := call.Args["path"].(string)
 			v.read[p] = true
 			v.inspected = append(v.inspected, p)
+			if isConfig(p) && !s.Obs.Failed() {
+				v.configs[p] = s.Obs.Output
+			}
 			collectErrors(&v, s.Obs.Output)
 		case "tail_log":
 			p, _ := call.Args["path"].(string)
@@ -112,6 +126,11 @@ func analyze(steps []core.Step) view {
 			v.grepped = true
 			if !s.Obs.Failed() && !strings.HasPrefix(strings.TrimSpace(s.Obs.Output), "(no matches)") {
 				collectErrors(&v, s.Obs.Output)
+			}
+		case "write_file":
+			p, _ := call.Args["path"].(string)
+			if !s.Obs.Failed() {
+				v.wrote[p] = true
 			}
 		}
 	}
@@ -150,16 +169,130 @@ func (v view) summary(goal string) string {
 	if len(v.inspected) > 0 {
 		fmt.Fprintf(&b, "Inspected: %s\n", strings.Join(dedupe(v.inspected), ", "))
 	}
+
 	if len(v.errorLines) > 0 {
 		b.WriteString("\nError indicators found:\n")
-		for _, l := range v.errorLines {
+		for _, l := range capLines(v.errorLines, 8) {
 			fmt.Fprintf(&b, "  - %s\n", l)
 		}
 		fmt.Fprintf(&b, "\nLikely cause: %s\n", diagnose(v.errorLines))
 	} else {
 		b.WriteString("\nNo obvious error indicators were found in configs or logs.\n")
 	}
+
+	// Concrete, high-confidence finding: a configured port that disagrees with
+	// the port the goal is asking about.
+	if fix := v.portMismatch(goal); fix != "" {
+		b.WriteString("\n" + fix + "\n")
+	}
+
+	if len(v.wrote) > 0 {
+		files := make([]string, 0, len(v.wrote))
+		for f := range v.wrote {
+			files = append(files, f)
+		}
+		sort.Strings(files)
+		fmt.Fprintf(&b, "\nFix applied: rewrote %s to the expected port. Restart the service and re-check the health endpoint to confirm.\n", strings.Join(files, ", "))
+	}
+
 	return strings.TrimRight(b.String(), "\n")
+}
+
+// wantsFix reports whether the goal is asking the agent to change something,
+// not merely to diagnose.
+func wantsFix(goal string) bool {
+	g := strings.ToLower(goal)
+	for _, k := range []string{"fix", "repair", "resolve", "correct", "make it listen", "set the port", "change the port", "update the config"} {
+		if strings.Contains(g, k) {
+			return true
+		}
+	}
+	return false
+}
+
+// proposeFix returns a config file path and its corrected contents when a
+// port mismatch can be repaired, or empty strings otherwise.
+func (v view) proposeFix(goal string) (path, content string) {
+	m := goalPortRe.FindStringSubmatch(goal)
+	if m == nil {
+		return "", ""
+	}
+	expected := m[1]
+	for _, f := range dedupe(v.inspected) {
+		c, ok := v.configs[f]
+		if !ok {
+			continue
+		}
+		nc, wrong, changed := rewritePort(c, expected)
+		if changed && wrong != "" {
+			return f, nc
+		}
+	}
+	return "", ""
+}
+
+// rewritePort rewrites listen/port directives whose port differs from expected,
+// returning the new content, the first wrong port it saw, and whether anything
+// changed. Only the port digits on matching lines are touched.
+func rewritePort(content, expected string) (string, string, bool) {
+	lines := strings.Split(content, "\n")
+	wrong := ""
+	changed := false
+	for i, ln := range lines {
+		loc := portRe.FindStringSubmatchIndex(ln)
+		if loc == nil {
+			continue
+		}
+		p := ln[loc[2]:loc[3]]
+		if p == expected {
+			continue
+		}
+		if wrong == "" {
+			wrong = p
+		}
+		lines[i] = ln[:loc[2]] + expected + ln[loc[3]:]
+		changed = true
+	}
+	return strings.Join(lines, "\n"), wrong, changed
+}
+
+var (
+	portRe     = regexp.MustCompile(`(?i)(?:listen|port)[^0-9]{0,4}([0-9]{2,5})`)
+	goalPortRe = regexp.MustCompile(`(?::|port\s+)([0-9]{2,5})`)
+)
+
+// portMismatch looks for a configured port that differs from the port the goal
+// mentions, and returns a concrete recommended fix if it finds one.
+func (v view) portMismatch(goal string) string {
+	m := goalPortRe.FindStringSubmatch(goal)
+	if m == nil {
+		return ""
+	}
+	expected := m[1]
+	// Iterate configs in inspection order for deterministic output.
+	for _, f := range dedupe(v.inspected) {
+		content, ok := v.configs[f]
+		if !ok {
+			continue
+		}
+		for _, pm := range portRe.FindAllStringSubmatch(content, -1) {
+			if pm[1] != expected {
+				return fmt.Sprintf(
+					"Root cause: %s is configured for port %s, but the goal expects port %s.\n"+
+						"Recommended fix: update %s to use port %s (change %s -> %s) and restart the service.",
+					f, pm[1], expected, f, expected, pm[1], expected)
+			}
+		}
+	}
+	return ""
+}
+
+func capLines(xs []string, n int) []string {
+	if len(xs) <= n {
+		return xs
+	}
+	out := append([]string{}, xs[:n]...)
+	return append(out, fmt.Sprintf("... and %d more", len(xs)-n))
 }
 
 func diagnose(lines []string) string {
