@@ -23,6 +23,7 @@ import (
 	"github.com/Atishay8192261/praxis/internal/playbook"
 	"github.com/Atishay8192261/praxis/internal/reason"
 	"github.com/Atishay8192261/praxis/internal/sandbox"
+	"github.com/Atishay8192261/praxis/internal/server"
 	"github.com/Atishay8192261/praxis/internal/tool"
 	"github.com/Atishay8192261/praxis/internal/tools/devops"
 	"github.com/Atishay8192261/praxis/internal/tools/mem"
@@ -241,10 +242,34 @@ func memoryCommand(args []string) {
 	}
 }
 
-func serveCommand(_ []string) {
-	// Implemented in the HTTP-server milestone.
-	fmt.Fprintln(os.Stderr, "praxis serve: the web workbench is not wired up yet in this build")
-	os.Exit(2)
+func serveCommand(args []string) {
+	fs := flag.NewFlagSet("serve", flag.ExitOnError)
+	addr := fs.String("addr", ":7777", "listen address")
+	workspace := fs.String("C", ".", "workspace directory (sandbox root)")
+	backend := fs.String("backend", "auto", "reasoner backend: auto|heuristic|model")
+	memPath := fs.String("memory", "", "long-term memory file to enable recall")
+	fs.Parse(args)
+
+	srv, err := server.New(server.Options{
+		Workspace:  *workspace,
+		Backend:    *backend,
+		MemoryPath: *memPath,
+	})
+	if err != nil {
+		fatal("serve: %v", err)
+	}
+
+	shown := *addr
+	if strings.HasPrefix(shown, ":") {
+		shown = "localhost" + shown
+	}
+	fmt.Printf("praxis %s workbench\n", version)
+	fmt.Printf("  url:       http://%s\n", shown)
+	fmt.Printf("  workspace: %s\n", srv.Workspace())
+	fmt.Printf("  (Ctrl-C to stop)\n")
+	if err := srv.ListenAndServe(*addr); err != nil {
+		fatal("serve: %v", err)
+	}
 }
 
 func selectBackend(name string) reason.Reasoner {

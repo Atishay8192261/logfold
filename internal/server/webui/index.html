@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Praxis — Agent Workbench</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div class="logo">prax<span>is</span></div>
+    <div class="meta" id="meta">workbench</div>
+    <div class="spacer"></div>
+    <div class="badge" id="backendBadge">backend: …</div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <h2 class="section">Run the agent</h2>
+      <label for="goal">Goal</label>
+      <textarea id="goal" placeholder="diagnose why the web service is unreachable on port 8080"></textarea>
+
+      <div class="row">
+        <div>
+          <label for="backend">Backend</label>
+          <select id="backend">
+            <option value="auto">auto</option>
+            <option value="heuristic">heuristic (no model)</option>
+            <option value="model">model</option>
+          </select>
+        </div>
+        <div>
+          <label for="maxSteps">Max steps</label>
+          <input id="maxSteps" type="number" value="12" min="1" max="50">
+        </div>
+      </div>
+
+      <div class="check">
+        <input type="checkbox" id="dryRun" checked>
+        <label for="dryRun" style="margin:0">Dry-run (don't modify files)</label>
+      </div>
+
+      <button id="runBtn">▶ Run agent</button>
+      <button id="scanBtn" class="secondary">⚡ Fast scan (parallel, no model)</button>
+
+      <div class="tabs">
+        <button data-tab="tools" class="active">Tools</button>
+        <button data-tab="memory">Memory</button>
+        <button data-tab="runs">Runs</button>
+      </div>
+      <div id="tab-tools" class="tabpane active"></div>
+      <div id="tab-memory" class="tabpane">
+        <div class="row" style="margin-bottom:8px">
+          <input id="memQuery" placeholder="search memory…">
+        </div>
+        <div id="memList"></div>
+      </div>
+      <div id="tab-runs" class="tabpane"></div>
+    </aside>
+
+    <main class="main">
+      <div class="pipeline" id="pipeline"></div>
+      <div id="result"></div>
+      <div class="status-line" id="statusLine"></div>
+      <div class="trace" id="trace">
+        <div class="empty">Enter a goal and press <b>Run agent</b> to watch it work, step by step.</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
