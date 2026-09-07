@@ -1,0 +1,16 @@
+# Binaries
+/praxis
+/dist/
+*.exe
+*.out
+
+# Runtime data / journals
+/data/
+*.log
+*.jsonl
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
