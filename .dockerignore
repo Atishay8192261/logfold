@@ -1,0 +1,6 @@
+.git
+/praxis
+/dist
+*.log
+*.jsonl
+praxis-memory.json
