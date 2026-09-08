@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 560" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" role="img" aria-label="Praxis web workbench preview">
+  <defs>
+    <style>
+      .mono{font-family:ui-monospace, Menlo, Consolas, monospace;}
+      .muted{fill:#9aa3b2;}
+      .text{fill:#e6e9ef;}
+      .accent{fill:#6ea8fe;}
+      .green{fill:#4ec9a3;}
+      .amber{fill:#e2b341;}
+    </style>
+  </defs>
+
+  <!-- app frame -->
+  <rect x="0" y="0" width="980" height="560" rx="12" fill="#0f1115" stroke="#2a2f3a"/>
+  <!-- header -->
+  <rect x="0" y="0" width="980" height="46" rx="12" fill="#171a21"/>
+  <rect x="0" y="34" width="980" height="12" fill="#171a21"/>
+  <text x="20" y="29" font-size="16" font-weight="700" class="text">prax<tspan class="accent">is</tspan></text>
+  <text x="78" y="29" font-size="12" class="muted mono">workspace: examples/broken-web</text>
+  <rect x="812" y="12" width="150" height="22" rx="11" fill="#0f1115" stroke="#2a2f3a"/>
+  <text x="887" y="27" font-size="11" text-anchor="middle" class="muted mono">backend: heuristic</text>
+  <line x1="0" y1="46" x2="980" y2="46" stroke="#2a2f3a"/>
+
+  <!-- sidebar -->
+  <rect x="0" y="46" width="300" height="514" fill="#171a21"/>
+  <line x1="300" y1="46" x2="300" y2="560" stroke="#2a2f3a"/>
+
+  <text x="16" y="76" font-size="11" letter-spacing="0.5" class="muted">RUN THE AGENT</text>
+  <text x="16" y="98" font-size="12" class="muted">Goal</text>
+  <rect x="16" y="106" width="268" height="52" rx="8" fill="#1e222b" stroke="#2a2f3a"/>
+  <text x="26" y="126" font-size="11.5" class="text mono">diagnose why the web service is</text>
+  <text x="26" y="143" font-size="11.5" class="text mono">unreachable on port 8080</text>
+
+  <text x="16" y="180" font-size="12" class="muted">Backend</text>
+  <text x="196" y="180" font-size="12" class="muted">Max steps</text>
+  <rect x="16" y="186" width="170" height="34" rx="8" fill="#1e222b" stroke="#2a2f3a"/>
+  <text x="28" y="208" font-size="12.5" class="text">auto</text>
+  <text x="172" y="208" font-size="12" class="muted">&#9662;</text>
+  <rect x="196" y="186" width="88" height="34" rx="8" fill="#1e222b" stroke="#2a2f3a"/>
+  <text x="208" y="208" font-size="12.5" class="text">12</text>
+
+  <rect x="16" y="230" width="15" height="15" rx="4" fill="#1e222b" stroke="#6ea8fe"/>
+  <path d="M19,237 l3,3 l6,-6" stroke="#6ea8fe" stroke-width="1.6" fill="none"/>
+  <text x="40" y="242" font-size="12" class="text">Dry-run (don't modify files)</text>
+
+  <rect x="16" y="258" width="268" height="38" rx="8" fill="#6ea8fe"/>
+  <text x="150" y="282" font-size="13" font-weight="700" text-anchor="middle" fill="#06122e">&#9654; Run agent</text>
+  <rect x="16" y="304" width="268" height="34" rx="8" fill="#1e222b" stroke="#2a2f3a"/>
+  <text x="150" y="326" font-size="12.5" text-anchor="middle" class="text">&#9889; Fast scan (parallel, no model)</text>
+
+  <!-- tabs -->
+  <rect x="16" y="356" width="56" height="26" rx="6" fill="#1e222b" stroke="#6ea8fe"/>
+  <text x="44" y="373" font-size="12" text-anchor="middle" class="text">Tools</text>
+  <rect x="80" y="356" width="70" height="26" rx="6" fill="#1e222b" stroke="#2a2f3a"/>
+  <text x="115" y="373" font-size="12" text-anchor="middle" class="muted">Memory</text>
+  <rect x="158" y="356" width="50" height="26" rx="6" fill="#1e222b" stroke="#2a2f3a"/>
+  <text x="183" y="373" font-size="12" text-anchor="middle" class="muted">Runs</text>
+
+  <!-- tool cards -->
+  <rect x="16" y="392" width="268" height="46" rx="8" fill="#1e222b" stroke="#2a2f3a"/>
+  <text x="26" y="411" font-size="12" font-weight="600" class="accent mono">read_file</text>
+  <text x="26" y="428" font-size="11" class="muted">Read a text file in the workspace</text>
+  <rect x="16" y="446" width="268" height="46" rx="8" fill="#1e222b" stroke="#2a2f3a"/>
+  <text x="26" y="465" font-size="12" font-weight="600" class="accent mono">grep</text>
+  <text x="26" y="482" font-size="11" class="muted">Search files for a regular expression</text>
+  <rect x="16" y="500" width="268" height="46" rx="8" fill="#1e222b" stroke="#2a2f3a"/>
+  <text x="26" y="519" font-size="12" font-weight="600" class="accent mono">run_cmd</text>
+  <text x="26" y="536" font-size="11" class="muted">Run an allowlisted command</text>
+
+  <!-- main: pipeline -->
+  <g class="mono" font-size="11">
+    <rect x="316" y="70" width="82" height="24" rx="6" fill="#1e222b" stroke="#4ec9a3"/>
+    <text x="357" y="86" text-anchor="middle" class="green">list_dir</text>
+    <text x="405" y="86" fill="#2a2f3a">&#8594;</text>
+    <rect x="418" y="70" width="90" height="24" rx="6" fill="#1e222b" stroke="#4ec9a3"/>
+    <text x="463" y="86" text-anchor="middle" class="green">read_file</text>
+    <text x="515" y="86" fill="#2a2f3a">&#8594;</text>
+    <rect x="528" y="70" width="82" height="24" rx="6" fill="#1e222b" stroke="#4ec9a3"/>
+    <text x="569" y="86" text-anchor="middle" class="green">tail_log</text>
+    <text x="617" y="86" fill="#2a2f3a">&#8594;</text>
+    <rect x="630" y="70" width="60" height="24" rx="6" fill="#1e222b" stroke="#6ea8fe"/>
+    <text x="660" y="86" text-anchor="middle" class="accent">grep</text>
+  </g>
+
+  <!-- result card -->
+  <rect x="316" y="110" width="648" height="92" rx="10" fill="#4ec9a3" fill-opacity="0.07" stroke="#4ec9a3"/>
+  <text x="332" y="136" font-size="13" font-weight="700" class="green mono">&#10004; result</text>
+  <text x="332" y="158" font-size="12.5" class="text mono">Root cause: nginx.conf is configured for port 9090, but the goal expects 8080.</text>
+  <text x="332" y="178" font-size="12.5" class="text mono">Recommended fix: change 9090 &#8594; 8080 in nginx.conf and restart the service.</text>
+
+  <!-- trace: think -->
+  <rect x="316" y="216" width="648" height="46" rx="10" fill="#171a21" stroke="#2a2f3a"/>
+  <rect x="330" y="228" width="52" height="18" rx="4" fill="#6ea8fe" fill-opacity="0.15"/>
+  <text x="356" y="241" font-size="10" font-weight="700" text-anchor="middle" class="accent">THINK</text>
+  <text x="396" y="243" font-size="12.5" class="text mono">Survey the workspace to see what is here.</text>
+
+  <!-- trace: tool -->
+  <rect x="316" y="270" width="648" height="46" rx="10" fill="#171a21" stroke="#2a2f3a"/>
+  <rect x="330" y="282" width="46" height="18" rx="4" fill="#e2b341" fill-opacity="0.15"/>
+  <text x="353" y="295" font-size="10" font-weight="700" text-anchor="middle" class="amber">TOOL</text>
+  <text x="388" y="297" font-size="12.5" class="text mono">read_file {"path":"nginx.conf"}</text>
+
+  <!-- trace: obs -->
+  <rect x="316" y="324" width="648" height="72" rx="10" fill="#171a21" stroke="#2a2f3a"/>
+  <rect x="330" y="336" width="44" height="18" rx="4" fill="#9aa3b2" fill-opacity="0.15"/>
+  <text x="352" y="349" font-size="10" font-weight="700" text-anchor="middle" class="muted">OBS</text>
+  <text x="930" y="349" font-size="11" text-anchor="end" class="muted mono">0 ms</text>
+  <text x="332" y="372" font-size="12" class="muted mono">server {</text>
+  <text x="332" y="388" font-size="12" class="muted mono">  listen 9090;  # expected 8080 &#183; location /health { return 200 "ok"; }</text>
+
+  <!-- status -->
+  <text x="316" y="428" font-size="12" class="muted mono">status: success &#183; 14 steps &#183; 3 ms</text>
+</svg>
