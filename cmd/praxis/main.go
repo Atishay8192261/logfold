@@ -244,7 +244,7 @@ func memoryCommand(args []string) {
 
 func serveCommand(args []string) {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
-	addr := fs.String("addr", ":7777", "listen address")
+	addr := fs.String("addr", "127.0.0.1:7777", "listen address")
 	workspace := fs.String("C", ".", "workspace directory (sandbox root)")
 	backend := fs.String("backend", "auto", "reasoner backend: auto|heuristic|model")
 	memPath := fs.String("memory", "", "long-term memory file to enable recall")
@@ -348,7 +348,7 @@ Commands:
   scan                  fast parallel, model-free workspace triage (graph playbook)
   memory add "<text>"   store a note in long-term memory
   memory search "<q>"   search long-term memory
-  serve                 launch the web workbench (default :7777)
+  serve                 launch the web workbench (default 127.0.0.1:7777)
   version               print version
   help                  show this help
 

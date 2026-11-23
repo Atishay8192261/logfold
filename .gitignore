@@ -14,3 +14,5 @@
 *.swp
 .idea/
 .vscode/
+
+!examples/broken-web/app.log

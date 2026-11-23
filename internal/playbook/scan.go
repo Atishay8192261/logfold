@@ -16,9 +16,8 @@ import (
 	"github.com/Atishay8192261/praxis/internal/core"
 	"github.com/Atishay8192261/praxis/internal/graph"
 	"github.com/Atishay8192261/praxis/internal/tool"
+	"github.com/Atishay8192261/praxis/internal/triage"
 )
-
-const errPattern = `(?i)(error|fail(ed|ure)?|refused|denied|panic|exception|fatal|cannot|unable|not found|address already in use|no such file|timed out)`
 
 // RunScan builds and runs the parallel scan playbook against the tools in reg
 // (which must include the DevOps toolset). It returns the report text and the
@@ -67,7 +66,7 @@ func RunScan(ctx context.Context, reg *tool.Registry, observer func(nodeID, phas
 	)
 
 	g.Node("scan_errors", func(_ context.Context, s *graph.State) error {
-		obs := dispatch("grep", map[string]any{"pattern": errPattern, "path": "."})
+		obs := dispatch("grep", map[string]any{"pattern": triage.ErrorPattern, "path": "."})
 		s.Set("errors", obs.Output)
 		return nil
 	})

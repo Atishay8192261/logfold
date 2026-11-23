@@ -19,6 +19,7 @@ import (
 
 	"github.com/Atishay8192261/praxis/internal/core"
 	"github.com/Atishay8192261/praxis/internal/tool"
+	"github.com/Atishay8192261/praxis/internal/triage"
 )
 
 // Decision is a single step the reasoner wants the agent to take. Exactly one
@@ -51,7 +52,7 @@ type Reasoner interface {
 
 // errKeywords is the shared pattern for "something went wrong" indicators, used
 // by the heuristic backend and worth surfacing to the model too.
-const errKeywords = `(?i)(error|fail(ed|ure)?|refused|denied|panic|exception|fatal|cannot|unable|not found|address already in use|no such file|timed out)`
+const errKeywords = triage.ErrorPattern
 
 // FromEnv selects a backend from the environment. If PRAXIS_MODEL_URL is set,
 // it uses the HTTP model backend; otherwise it falls back to the deterministic
