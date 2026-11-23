@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"syscall/js"
 
-	"github.com/Atishay8192261/praxis/internal/triage"
+	"github.com/Atishay8192261/logfold/internal/triage"
 )
 
 func main() {
-	js.Global().Set("praxisAnalyze", js.FuncOf(analyze))
+	js.Global().Set("logfoldAnalyze", js.FuncOf(analyze))
 	select {}
 }
 

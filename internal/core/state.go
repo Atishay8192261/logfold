@@ -70,7 +70,7 @@ func (s *RunState) append(step Step) {
 
 // Replay reconstructs the full RunState from an ordered slice of events. Given
 // the same events it always yields the same state — the core determinism
-// guarantee that makes Praxis runs debuggable.
+// guarantee that makes LogFold runs debuggable.
 func Replay(events []Event) (*RunState, error) {
 	s := &RunState{}
 	for _, ev := range events {

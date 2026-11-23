@@ -1,10 +1,10 @@
-BINARY := praxis
+BINARY := logfold
 DEMO   := examples/broken-web
 
 .PHONY: build test race bench fmt vet run fix scan serve docker clean
 
 build:
-	go build -o $(BINARY) ./cmd/praxis
+	go build -o $(BINARY) ./cmd/logfold
 
 test:
 	go test ./...
@@ -34,7 +34,7 @@ serve: build
 	./$(BINARY) serve -C $(DEMO)
 
 docker:
-	docker build -t praxis .
+	docker build -t logfold .
 
 clean:
 	rm -f $(BINARY)
@@ -42,10 +42,11 @@ clean:
 .PHONY: site
 site:
 	mkdir -p dist/site
-	cp web/index.html web/style.css web/app.js web/icon.png dist/site/
+	cp web/*.html web/*.css web/*.js web/icon.png dist/site/
 	@if [ -f "$$(go env GOROOT)/lib/wasm/wasm_exec.js" ]; then \
 		cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" dist/site/; \
 	else \
 		cp "$$(go env GOROOT)/misc/wasm/wasm_exec.js" dist/site/; \
 	fi
-	GOOS=js GOARCH=wasm go build -trimpath -ldflags "-s -w" -o dist/site/triage.wasm ./cmd/praxis-web
+	GOOS=js GOARCH=wasm go build -trimpath -ldflags "-s -w" -o dist/site/triage.wasm ./cmd/logfold-web
+	GOOS=js GOARCH=wasm go build -trimpath -ldflags "-s -w" -o dist/site/explorer.wasm ./cmd/logfold-explorer-web

@@ -1,4 +1,4 @@
-// Package devops implements the tools the flagship Praxis agent uses to
+// Package devops implements the tools the flagship LogFold agent uses to
 // diagnose and fix a service: reading files, listing directories, grepping,
 // tailing logs, probing ports and HTTP endpoints, running allowlisted
 // commands, and applying file edits. Every tool goes through the sandbox, so
@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Atishay8192261/praxis/internal/sandbox"
-	"github.com/Atishay8192261/praxis/internal/tool"
+	"github.com/Atishay8192261/logfold/internal/sandbox"
+	"github.com/Atishay8192261/logfold/internal/tool"
 )
 
 // Register installs the full DevOps toolset into reg, backed by sb.

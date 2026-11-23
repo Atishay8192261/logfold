@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Atishay8192261/praxis/internal/sandbox"
-	"github.com/Atishay8192261/praxis/internal/tool"
-	"github.com/Atishay8192261/praxis/internal/tools/devops"
+	"github.com/Atishay8192261/logfold/internal/sandbox"
+	"github.com/Atishay8192261/logfold/internal/tool"
+	"github.com/Atishay8192261/logfold/internal/tools/devops"
 )
 
 func TestRunScan(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 // nearest-neighbor search over normalized vectors (cosine distance = 1 - dot).
 //
 // It is intentionally deterministic — level assignment uses a fixed-seed PRNG —
-// so an index rebuilt from the same inserts is identical, which keeps Praxis
+// so an index rebuilt from the same inserts is identical, which keeps LogFold
 // runs reproducible.
 type HNSW struct {
 	dim   int

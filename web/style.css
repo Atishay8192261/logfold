@@ -61,7 +61,7 @@ textarea.code, .evidence code { font-family: "SFMono-Regular", Consolas, "Libera
 .primary, .secondary { display: inline-flex; align-items: center; justify-content: center; gap: 12px; border: 1px solid transparent; border-radius: 8px; padding: 8px 14px; min-height: 42px; font-size: 14px; font-weight: 700; text-decoration: none; }
 .primary { background: var(--accent); color: #18200e; }
 .primary:hover:not(:disabled) { background: var(--accent-hover); }
-.secondary { color: var(--text); border-color: var(--line); }
+.secondary { background: transparent; color: var(--text); border-color: var(--line); }
 .secondary:hover { border-color: var(--muted); }
 #analyze { justify-content: space-between; min-width: 174px; }
 

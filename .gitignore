@@ -1,4 +1,5 @@
 # Binaries
+/logfold
 /praxis
 /dist/
 *.exe

@@ -1,4 +1,4 @@
-// Package journal implements the append-only event log at the heart of Praxis.
+// Package journal implements the append-only event log at the heart of LogFold.
 //
 // A Journal records every event an agent run produces, in order, and can:
 //   - persist events as newline-delimited JSON (JSONL) to any io.Writer,
@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Atishay8192261/praxis/internal/core"
+	"github.com/Atishay8192261/logfold/internal/core"
 )
 
 // clock is swappable so tests can make timestamps deterministic.

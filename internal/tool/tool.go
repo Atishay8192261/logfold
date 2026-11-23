@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Atishay8192261/praxis/internal/core"
+	"github.com/Atishay8192261/logfold/internal/core"
 )
 
 // Tool is a capability the agent can invoke. Implementations must be safe for

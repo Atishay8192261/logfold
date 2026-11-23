@@ -123,7 +123,7 @@ func TestServesUI(t *testing.T) {
 	}
 	defer res.Body.Close()
 	b, _ := io.ReadAll(res.Body)
-	if !strings.Contains(string(b), "prax") {
+	if !strings.Contains(string(b), "LogFold") {
 		t.Fatal("index.html not served")
 	}
 }

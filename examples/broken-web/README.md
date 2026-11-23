@@ -1,6 +1,6 @@
 # broken-web scenario
 
-A deliberately misconfigured web gateway, used to demonstrate the Praxis DevOps
+A deliberately misconfigured web gateway, used to demonstrate the LogFold DevOps
 agent.
 
 **Symptom:** health checks to `http://127.0.0.1:8080/health` fail with
@@ -14,12 +14,12 @@ agent.
 Run the agent against this directory:
 
 ```sh
-praxis run -C examples/broken-web "diagnose why the web service is unreachable on port 8080"
+logfold run -C examples/broken-web "diagnose why the web service is unreachable on port 8080"
 ```
 
 To let the agent apply the fix (edit the config), add `-allow` for any commands
 it may run, or let it use `write_file` directly:
 
 ```sh
-praxis run -C examples/broken-web "fix the config so the gateway listens on 8080"
+logfold run -C examples/broken-web "fix the config so the gateway listens on 8080"
 ```

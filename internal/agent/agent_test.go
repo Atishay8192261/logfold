@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Atishay8192261/praxis/internal/core"
-	"github.com/Atishay8192261/praxis/internal/journal"
-	"github.com/Atishay8192261/praxis/internal/reason"
-	"github.com/Atishay8192261/praxis/internal/sandbox"
-	"github.com/Atishay8192261/praxis/internal/tool"
-	"github.com/Atishay8192261/praxis/internal/tools/devops"
+	"github.com/Atishay8192261/logfold/internal/core"
+	"github.com/Atishay8192261/logfold/internal/journal"
+	"github.com/Atishay8192261/logfold/internal/reason"
+	"github.com/Atishay8192261/logfold/internal/sandbox"
+	"github.com/Atishay8192261/logfold/internal/tool"
+	"github.com/Atishay8192261/logfold/internal/tools/devops"
 )
 
 // buildScenario writes a broken-service workspace: an nginx config on the wrong

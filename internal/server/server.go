@@ -1,4 +1,4 @@
-// Package server is the Praxis web workbench backend: a standard-library HTTP
+// Package server is the LogFold web workbench backend: a standard-library HTTP
 // server exposing a small REST API plus a Server-Sent Events stream of live
 // agent steps, and serving the embedded single-page UI. No web framework.
 package server
@@ -15,16 +15,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Atishay8192261/praxis/internal/agent"
-	"github.com/Atishay8192261/praxis/internal/core"
-	"github.com/Atishay8192261/praxis/internal/journal"
-	"github.com/Atishay8192261/praxis/internal/memory"
-	"github.com/Atishay8192261/praxis/internal/playbook"
-	"github.com/Atishay8192261/praxis/internal/reason"
-	"github.com/Atishay8192261/praxis/internal/sandbox"
-	"github.com/Atishay8192261/praxis/internal/tool"
-	"github.com/Atishay8192261/praxis/internal/tools/devops"
-	"github.com/Atishay8192261/praxis/internal/tools/mem"
+	"github.com/Atishay8192261/logfold/internal/agent"
+	"github.com/Atishay8192261/logfold/internal/core"
+	"github.com/Atishay8192261/logfold/internal/journal"
+	"github.com/Atishay8192261/logfold/internal/memory"
+	"github.com/Atishay8192261/logfold/internal/playbook"
+	"github.com/Atishay8192261/logfold/internal/reason"
+	"github.com/Atishay8192261/logfold/internal/sandbox"
+	"github.com/Atishay8192261/logfold/internal/tool"
+	"github.com/Atishay8192261/logfold/internal/tools/devops"
+	"github.com/Atishay8192261/logfold/internal/tools/mem"
 )
 
 //go:embed webui

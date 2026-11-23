@@ -104,7 +104,7 @@ function inspect(scroll) {
   showError("");
   const input = Object.fromEntries(Object.entries(fields).map(([key, field]) => [key, field.value]));
   try {
-    const response = JSON.parse(globalThis.praxisAnalyze(JSON.stringify(input)));
+    const response = JSON.parse(globalThis.logfoldAnalyze(JSON.stringify(input)));
     if (response.error) {
       clearReport();
       showError(response.error);
@@ -117,7 +117,7 @@ function inspect(scroll) {
     }
   } catch {
     clearReport();
-    showError("The analysis could not finish. Reload Praxis and try again.");
+    showError("The analysis could not finish. Reload LogFold and try again.");
   }
 }
 
@@ -206,7 +206,7 @@ byId("copy-brief").addEventListener("click", async () => {
 function engineError() {
   analyze.disabled = true;
   for (const button of sampleButtons) button.disabled = true;
-  showError("Praxis could not start the browser engine. Reload the page or try a current browser.");
+  showError("LogFold could not start the browser engine. Reload the page or try a current browser.");
 }
 
 async function start() {
@@ -215,7 +215,7 @@ async function start() {
   if (!response.ok) throw new Error("Engine download failed");
   const { instance } = await WebAssembly.instantiate(await response.arrayBuffer(), runtime.importObject);
   runtime.run(instance).then(engineError, engineError);
-  if (typeof globalThis.praxisAnalyze !== "function") throw new Error("Engine initialization failed");
+  if (typeof globalThis.logfoldAnalyze !== "function") throw new Error("Engine initialization failed");
   analyze.disabled = false;
   for (const button of sampleButtons) button.disabled = false;
 }

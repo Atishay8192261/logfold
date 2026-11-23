@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Atishay8192261/praxis/internal/memory"
-	"github.com/Atishay8192261/praxis/internal/tool"
+	"github.com/Atishay8192261/logfold/internal/memory"
+	"github.com/Atishay8192261/logfold/internal/tool"
 )
 
 // Register installs the remember/recall tools backed by store.
