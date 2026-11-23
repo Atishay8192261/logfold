@@ -1,0 +1,4 @@
+14:32:06 INFO  gateway booted
+14:32:07 INFO  applied nginx.conf
+14:32:12 ERROR GET http://127.0.0.1:8080/health: connection refused
+14:32:17 ERROR GET http://127.0.0.1:8080/health: connection refused

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Triage software incidents from logs and configs in your browser, then take the evidence into ChatGPT.">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>Praxis · Incident triage</title>
+  <link rel="icon" href="./icon.png">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./wasm_exec.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="./"><span class="brand-icon" aria-hidden="true">›_</span>Praxis</a>
+      <a class="repo-link" href="https://github.com/Atishay8192261/praxis" target="_blank" rel="noopener">Source on GitHub <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <h1 id="page-title">Incident triage<span>.</span></h1>
+        <p>Find likely causes in logs and config, then take the evidence into ChatGPT.</p>
+      </div>
+      <span class="local-label"><span aria-hidden="true"></span> Runs in your browser</span>
+    </section>
+
+    <div class="workbench">
+      <section class="panel input-panel" aria-labelledby="input-heading">
+        <div class="panel-header">
+          <div>
+            <h2 id="input-heading">Incident inputs</h2>
+            <p>Paste a snippet or load a text file.</p>
+          </div>
+          <button type="button" id="clear" class="quiet">Clear</button>
+        </div>
+        <form id="incident" autocomplete="off">
+          <div class="input-fields">
+            <div class="field">
+              <div class="field-label"><label for="symptom">What’s failing?</label><span class="optional">Optional</span></div>
+              <input id="symptom" type="text" placeholder="Health checks fail on port 8080" spellcheck="false">
+            </div>
+            <div class="field">
+              <div class="field-label">
+                <label for="logs">Logs</label>
+                <button type="button" class="quiet file-button" data-file="log-file">Open file</button>
+                <input type="file" id="log-file" hidden>
+              </div>
+              <textarea id="logs" class="code" rows="6" placeholder="Paste the errors and a few lines around them…" spellcheck="false" aria-describedby="input-note"></textarea>
+            </div>
+            <div class="field">
+              <div class="field-label">
+                <label for="config">Config</label>
+                <button type="button" class="quiet file-button" data-file="config-file">Open file</button>
+                <input type="file" id="config-file" hidden>
+              </div>
+              <textarea id="config" class="code" rows="5" placeholder="Paste related settings such as listen ports or service endpoints…" spellcheck="false" aria-describedby="input-note"></textarea>
+            </div>
+            <p class="input-note" id="input-note">Logs or config required. Up to 192 KiB per input.</p>
+            <p class="error" id="input-error" role="alert" hidden></p>
+          </div>
+          <div class="panel-footer">
+            <button type="submit" id="analyze" class="primary" disabled>Analyze incident <span aria-hidden="true">→</span></button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel report-panel" aria-labelledby="report-heading">
+        <div class="panel-header">
+          <div>
+            <h2 id="report-heading" tabindex="-1">Triage report</h2>
+            <p id="report-meta" role="status">Findings and checks to run next.</p>
+          </div>
+          <span class="report-indicator" id="report-indicator" aria-hidden="true"></span>
+        </div>
+        <div id="empty-report">
+          <div class="empty-intro">
+            <div class="report-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+            <h3 id="empty-title">Ready to inspect</h3>
+            <p id="empty-copy">Add incident evidence or start with a sample.</p>
+          </div>
+          <div class="examples" aria-labelledby="samples-heading">
+            <h3 id="samples-heading">Sample incidents</h3>
+            <button type="button" class="sample" data-example="gateway"><span>Gateway health check fails</span><span aria-hidden="true">↗</span></button>
+            <button type="button" class="sample" data-example="database"><span>API can’t reach Postgres</span><span aria-hidden="true">↗</span></button>
+            <button type="button" class="sample" data-example="build"><span>Deployment crashes on startup</span><span aria-hidden="true">↗</span></button>
+          </div>
+        </div>
+        <div id="report" hidden>
+          <div id="findings" class="findings"></div>
+          <section class="handoff" aria-labelledby="brief-heading">
+            <h3 id="brief-heading">Continue in ChatGPT</h3>
+            <p>Review or edit the brief, copy it, then paste it into your own ChatGPT session. You can use it with another assistant, too.</p>
+            <p id="redactions" class="input-note"></p>
+            <label for="brief" class="field-label">Incident brief</label>
+            <textarea id="brief" rows="5" class="code" spellcheck="false"></textarea>
+            <div class="brief-actions">
+              <button type="button" id="copy-brief" class="primary">Copy brief</button>
+              <a class="secondary" href="https://chatgpt.com/" target="_blank" rel="noopener">Open ChatGPT <span aria-hidden="true">↗</span></a>
+            </div>
+            <p id="copy-status" class="copy-status" role="status"></p>
+          </section>
+        </div>
+      </section>
+    </div>
+    <p class="privacy">Praxis analyzes the text on your device. Review the brief for sensitive details before sharing it.</p>
+    <noscript><p class="error">Enable JavaScript to run browser-based triage.</p></noscript>
+  </main>
+</body>
+</html>
