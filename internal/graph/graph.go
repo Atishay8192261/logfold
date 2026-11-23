@@ -1,5 +1,5 @@
 // Package graph is a small, typed workflow engine — the "build your own
-// LangGraph" core of Praxis. A Graph is a set of named nodes connected by
+// LangGraph" core of LogFold. A Graph is a set of named nodes connected by
 // edges. Edges may be conditional (branching), a node may fan out into work
 // that runs concurrently and joins before proceeding (parallel fan-out/
 // fan-in), and edges may point backwards to form bounded loops.

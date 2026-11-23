@@ -1,4 +1,4 @@
-// Package memory gives Praxis agents long-term recall. It embeds text into
+// Package memory gives LogFold agents long-term recall. It embeds text into
 // vectors with a from-scratch feature-hashing vectorizer (no model required)
 // and indexes them in a hand-built HNSW graph for fast approximate
 // nearest-neighbor search. Everything here is standard-library only.

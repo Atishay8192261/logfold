@@ -1,5 +1,5 @@
 // Package playbook contains deterministic, graph-driven workflows built on the
-// Praxis graph engine and tools. Unlike the ReAct agent (which asks a reasoner
+// LogFold graph engine and tools. Unlike the ReAct agent (which asks a reasoner
 // what to do next), a playbook is a fixed graph — useful when you want fast,
 // repeatable, model-free automation.
 //
@@ -13,10 +13,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Atishay8192261/praxis/internal/core"
-	"github.com/Atishay8192261/praxis/internal/graph"
-	"github.com/Atishay8192261/praxis/internal/tool"
-	"github.com/Atishay8192261/praxis/internal/triage"
+	"github.com/Atishay8192261/logfold/internal/core"
+	"github.com/Atishay8192261/logfold/internal/graph"
+	"github.com/Atishay8192261/logfold/internal/tool"
+	"github.com/Atishay8192261/logfold/internal/triage"
 )
 
 // RunScan builds and runs the parallel scan playbook against the tools in reg

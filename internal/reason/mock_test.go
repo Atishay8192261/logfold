@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Atishay8192261/praxis/internal/core"
+	"github.com/Atishay8192261/logfold/internal/core"
 )
 
 type transcript struct {

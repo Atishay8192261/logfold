@@ -1,4 +1,4 @@
-// Package reason is the "brain" boundary of Praxis. A Reasoner looks at the
+// Package reason is the "brain" boundary of LogFold. A Reasoner looks at the
 // goal, the transcript so far, and the available tools, and decides the next
 // action: call a tool, or finish with an answer.
 //
@@ -17,9 +17,9 @@ import (
 	"context"
 	"os"
 
-	"github.com/Atishay8192261/praxis/internal/core"
-	"github.com/Atishay8192261/praxis/internal/tool"
-	"github.com/Atishay8192261/praxis/internal/triage"
+	"github.com/Atishay8192261/logfold/internal/core"
+	"github.com/Atishay8192261/logfold/internal/tool"
+	"github.com/Atishay8192261/logfold/internal/triage"
 )
 
 // Decision is a single step the reasoner wants the agent to take. Exactly one
@@ -56,7 +56,7 @@ const errKeywords = triage.ErrorPattern
 
 // FromEnv selects a backend from the environment. If PRAXIS_MODEL_URL is set,
 // it uses the HTTP model backend; otherwise it falls back to the deterministic
-// heuristic so Praxis always runs out of the box.
+// heuristic so LogFold always runs out of the box.
 //
 //	PRAXIS_MODEL_URL   e.g. http://127.0.0.1:11434/v1
 //	PRAXIS_MODEL_NAME  e.g. llama3.1  (model identifier)

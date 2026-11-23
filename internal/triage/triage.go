@@ -65,12 +65,13 @@ var (
 	secretRules    = []struct {
 		pattern     *regexp.Regexp
 		replacement string
+		probes      []string
 	}{
-		{regexp.MustCompile(`(?im)^([ \t]*(?:authorization|(?:set-)?cookie)[ \t]*:[ \t]*)[^\r\n]+`), "${1}[REDACTED]"},
-		{regexp.MustCompile(`(?i)\b(bearer|basic) +[a-z0-9._~+/-]+=*`), "${1} [REDACTED]"},
-		{regexp.MustCompile(`(?i)([a-z][a-z0-9+.-]*://)[^\s/@]+:[^\s/@]+@`), "${1}[REDACTED]@"},
-		{regexp.MustCompile(`(?i)(\b(?:[\w-]*[_-])?(?:password|passwd|pwd|secret(?:[_-]key)?|(?:api[_-]?)?key|(?:access[_-]?|refresh[_-]?|auth[_-]?)?token|client[_-]?secret|cookie|authorization)\b["']?[ \t]*[:=][ \t]*)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\[(?:REDACTED)\]|[^\s,};&]+)`), "${1}[REDACTED]"},
-		{regexp.MustCompile(`\b(?:sk-(?:proj-)?[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|github_pat_[A-Za-z0-9_]{16,}|xox[baprs]-[A-Za-z0-9-]{10,}|(?:AKIA|ASIA)[A-Z0-9]{16}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)\b`), "[REDACTED]"},
+		{regexp.MustCompile(`(?im)^([ \t]*(?:authorization|(?:set-)?cookie)[ \t]*:[ \t]*)[^\r\n]+`), "${1}[REDACTED]", []string{"authorization", "cookie"}},
+		{regexp.MustCompile(`(?i)\b(bearer|basic) +[a-z0-9._~+/-]+=*`), "${1} [REDACTED]", []string{"bearer ", "basic "}},
+		{regexp.MustCompile(`(?i)([a-z][a-z0-9+.-]*://)[^\s/@]+:[^\s/@]+@`), "${1}[REDACTED]@", []string{"://"}},
+		{regexp.MustCompile(`(?i)(\b(?:[\w-]*[_-])?(?:password|passwd|pwd|secret(?:[_-]key)?|(?:api[_-]?)?key|(?:access[_-]?|refresh[_-]?|auth[_-]?)?token|client[_-]?secret|cookie|authorization)\b["']?[ \t]*[:=][ \t]*)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\[(?:REDACTED)\]|[^\s,};&]+)`), "${1}[REDACTED]", []string{"password", "passwd", "pwd", "secret", "key", "token", "cookie", "authorization"}},
+		{regexp.MustCompile(`\b(?:sk-(?:proj-)?[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9_]{16,}|github_pat_[A-Za-z0-9_]{16,}|xox[baprs]-[A-Za-z0-9-]{10,}|(?:AKIA|ASIA)[A-Z0-9]{16}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)\b`), "[REDACTED]", []string{"sk-", "ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_", "xox", "akia", "asia", "eyj"}},
 	}
 )
 
@@ -89,10 +90,10 @@ func Analyze(in Input) (Report, error) {
 		return report, errors.New("Use plain-text logs and configuration.")
 	}
 
-	symptom, symptomMasks := redact(strings.TrimSpace(in.Symptom))
+	symptom, symptomMasks := Redact(strings.TrimSpace(in.Symptom))
 	// Retain leading newlines so evidence line numbers refer to the original input.
-	logs, logMasks := redact(strings.TrimRight(strings.ReplaceAll(in.Logs, "\r\n", "\n"), "\n"))
-	config, configMasks := redact(strings.TrimRight(strings.ReplaceAll(in.Config, "\r\n", "\n"), "\n"))
+	logs, logMasks := Redact(strings.TrimRight(strings.ReplaceAll(in.Logs, "\r\n", "\n"), "\n"))
+	config, configMasks := Redact(strings.TrimRight(strings.ReplaceAll(in.Config, "\r\n", "\n"), "\n"))
 	logLines, configLines := lines(logs), lines(config)
 	report.Findings = []Finding{}
 	report.Redactions = symptomMasks + logMasks + configMasks
@@ -112,13 +113,19 @@ func lines(s string) []string {
 	return strings.Split(s, "\n")
 }
 
-func redact(s string) (string, int) {
+func Redact(s string) (string, int) {
 	count := 0
-	s = privateKeyRE.ReplaceAllStringFunc(s, func(match string) string {
-		count++
-		return "[REDACTED PRIVATE KEY]" + strings.Repeat("\n", strings.Count(match, "\n"))
-	})
+	if strings.Contains(s, "-----BEGIN ") {
+		s = privateKeyRE.ReplaceAllStringFunc(s, func(match string) string {
+			count++
+			return "[REDACTED PRIVATE KEY]" + strings.Repeat("\n", strings.Count(match, "\n"))
+		})
+	}
+	lower := strings.ToLower(s)
 	for _, r := range secretRules {
+		if !slices.ContainsFunc(r.probes, func(probe string) bool { return strings.Contains(lower, probe) }) {
+			continue
+		}
 		matches := r.pattern.FindAllStringSubmatchIndex(s, -1)
 		var clean strings.Builder
 		end := 0
@@ -232,7 +239,7 @@ func buildBrief(findings []Finding, symptom string, logs, config []string) strin
 		fmt.Fprintf(&b, "\nReported symptom\n> %s\n", strings.ReplaceAll(symptom, "\n", "\n> "))
 	}
 	if len(findings) > 0 {
-		b.WriteString("\nPraxis signals (rule-based)\n")
+		b.WriteString("\nLogFold signals (rule-based)\n")
 		for _, finding := range findings {
 			fmt.Fprintf(&b, "- %s. %s\n", finding.Title, finding.Meaning)
 			for _, item := range finding.Evidence {

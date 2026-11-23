@@ -1,12 +1,35 @@
-<h1 align="center">Praxis</h1>
+<h1 align="center">LogFold</h1>
 
-[**Open Praxis**](https://atishay8192261.github.io/praxis/) · [Local Go agent](#local-quickstart)
+[**Open LogFold**](https://atishay8192261.github.io/logfold/) · [Quick triage](https://atishay8192261.github.io/logfold/triage.html) · [CLI usage](#command-line)
 
-Praxis turns logs and configuration snippets into an incident report with matching lines, hypotheses, and suggested checks. Try the gateway sample, or paste evidence from a failing deployment. You can review and copy the incident brief into your own ChatGPT session or another assistant.
+LogFold compares logs from a software incident with a reference window. It groups repeated failures into fingerprints, shows when they spiked and which files contain them, and exports the report as JSON or Markdown. **Run sample** demonstrates a checkout outage with JSON Lines and an earlier plain-text baseline.
 
-The public workbench runs a rule-based Go analyzer in your browser using WebAssembly. You can use it without an account or API key. It masks common credential patterns in results and excerpts. Review the brief before sharing it, since pattern matching can miss secrets and other private details.
+The browser workbench is free and runs without an account or API key. It reads plain text, JSON Lines, and gzip locally in a Web Worker. Copy an editable brief into your own ChatGPT session when you want a second pass. Review generated evidence before sharing it.
 
-The same repository contains a local Go agent runtime for workspace scans, live traces, and assisted fixes. Run it on a workspace you control.
+## How the comparison works
+
+| Stage | Implementation |
+|---|---|
+| Ingest | A chunked Go reader frames UTF-8 lines. It preserves source line numbers and skips invalid or oversized lines. The same engine runs in a native CLI and as browser WebAssembly. |
+| Fingerprint | The engine extracts severity, message, and timestamp from supported formats. It expands common level aliases, masks common credentials, normalizes UUIDs and volatile request/trace fields, and hashes severity plus normalized text with SHA-256. |
+| Compare | Counts remain exact for retained fingerprints. Rates use valid lines in each window as their denominator, so matching volume and event frequency are visible even when the windows differ in size. |
+| Correlate | Each group records the first and last timestamp, a sample with its file and line, and event counts by source. The UTC histogram starts at one minute and doubles bucket width as needed to stay within 72 buckets, including late or out-of-order events. |
+| Bound resources | The browser accepts up to six files and 64 MiB after decompression. The Go engine caps lines at 64 KiB, retains at most 2,048 groups, and caps per-group source details. Overflow stays visible in the totals and timeline. |
+
+LogFold flags explicit warning, error, and fatal events, plus common error phrases when severity is missing. JSON timestamps support RFC 3339 and Unix seconds or milliseconds. Plain-text timestamps need a leading RFC 3339 value or epoch. Untimed events remain in the report and can be compared by fingerprint. Fingerprints describe matching log messages and the rates are per 1,000 valid lines.
+
+## Command line
+
+Build with Go 1.23 or later. The CLI streams files and stdin and writes the same versioned JSON schema as the browser.
+
+```sh
+git clone https://github.com/Atishay8192261/logfold && cd logfold
+make build
+./logfold compare -baseline before.log after.log.gz worker.jsonl > incident-report.json
+cat worker.jsonl | ./logfold compare -
+```
+
+Repeat `-baseline` to include more reference files. The browser also has [Quick triage](https://atishay8192261.github.io/logfold/triage.html) for pasted log or config snippets.
 
 ## Local runtime
 
@@ -21,20 +44,20 @@ The same repository contains a local Go agent runtime for workspace scans, live 
 ## Local quickstart
 
 ```sh
-git clone https://github.com/Atishay8192261/praxis && cd praxis
-go build -o praxis ./cmd/praxis        # no dependencies to download
+git clone https://github.com/Atishay8192261/logfold && cd logfold
+go build -o logfold ./cmd/logfold        # no dependencies to download
 
 # Diagnose a deliberately-broken demo service (no AI model required):
-./praxis run  -C examples/broken-web "diagnose why the web service is unreachable on port 8080"
+./logfold run  -C examples/broken-web "diagnose why the web service is unreachable on port 8080"
 
 # Preview the fix before applying it:
-./praxis run -dry-run -C examples/broken-web "fix the config so the gateway listens on port 8080"
+./logfold run -dry-run -C examples/broken-web "fix the config so the gateway listens on port 8080"
 
 # A fast, parallel, model-free triage of any workspace:
-./praxis scan -C examples/broken-web
+./logfold scan -C examples/broken-web
 
 # Launch the local workbench at http://127.0.0.1:7777
-./praxis serve -C examples/broken-web
+./logfold serve -C examples/broken-web
 ```
 
 The local workbench can read and change the selected workspace. Run it on loopback as a single-user tool. For Docker, bind the published port to loopback with `-p 127.0.0.1:7777:7777`.
@@ -44,7 +67,7 @@ The local workbench can read and change the selected workspace. Run it on loopba
 ```sh
 export PRAXIS_MODEL_URL=http://127.0.0.1:11434/v1   # e.g. Ollama
 export PRAXIS_MODEL_NAME=llama3.1
-./praxis run -backend model -dry-run -C examples/broken-web "diagnose why the health endpoint is failing"
+./logfold run -backend model -dry-run -C examples/broken-web "diagnose why the health endpoint is failing"
 ```
 
 To use OpenAI’s API from the local agent, set `PRAXIS_MODEL_URL=https://api.openai.com/v1`, set `PRAXIS_MODEL_NAME` to a Chat Completions model available in your API project, and provide your API key through `PRAXIS_MODEL_KEY`. The API has separate billing from ChatGPT. The public workbench’s copy-and-paste handoff uses your ChatGPT session without API credentials.
@@ -70,6 +93,8 @@ An agent run is nothing but an ordered list of events. The live view and any lat
 
 ## Benchmarks
 
+To reproduce the streaming benchmark, run `go test ./internal/logscan -run '^$' -bench BenchmarkStreamLogs -benchmem`. The fixture contains 10,000 mixed plain-text and JSON Lines entries with 10% errors. It exercises framing, normalization, fingerprinting, and report generation in a single pass.
+
 Single-threaded, `go test -bench` (see `internal/memory/bench_test.go`):
 
 | Benchmark | Result |
@@ -82,12 +107,12 @@ Single-threaded, `go test -bench` (see `internal/memory/bench_test.go`):
 ## Development
 
 ```sh
-make build      # build ./praxis
+make build      # build ./logfold
 make test       # go test ./...
 make race       # go test -race ./...
 make bench      # benchmarks
 make serve      # build + serve the local demo workspace
-make site       # build the public workbench into dist/site
+make site       # build both browser tools into dist/site
 ```
 
 To preview the public workbench locally, run `python3 -m http.server --bind 127.0.0.1 --directory dist/site 8000` and open `http://127.0.0.1:8000`. GitHub Actions publishes the static build from `main`.

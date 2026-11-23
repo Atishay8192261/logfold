@@ -1,4 +1,4 @@
-// Package tool defines the typed tool protocol Praxis agents use to act on the
+// Package tool defines the typed tool protocol LogFold agents use to act on the
 // world: a small JSON-schema-style parameter model, argument validation and
 // coercion, a tool registry, and a dispatcher that turns a core.ToolCall into
 // a core.Observation.

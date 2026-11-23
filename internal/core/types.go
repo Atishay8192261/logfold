@@ -1,8 +1,8 @@
-// Package core defines the fundamental data model shared across Praxis:
+// Package core defines the fundamental data model shared across LogFold:
 // the messages, tool calls, observations, steps, and the append-only event
 // stream that every agent run is built from.
 //
-// Everything in Praxis is event-sourced: an agent run is nothing more than an
+// Everything in LogFold is event-sourced: an agent run is nothing more than an
 // ordered list of Events. The live run state is a pure fold over those events
 // (see Replay), which is what makes deterministic replay possible.
 package core

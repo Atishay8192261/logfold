@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/Atishay8192261/praxis/internal/core"
+	"github.com/Atishay8192261/logfold/internal/core"
 )
 
 // writeSampleRun appends a representative agent run to j and returns nothing;

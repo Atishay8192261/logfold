@@ -9,13 +9,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Atishay8192261/praxis/internal/core"
-	"github.com/Atishay8192261/praxis/internal/tool"
+	"github.com/Atishay8192261/logfold/internal/core"
+	"github.com/Atishay8192261/logfold/internal/tool"
 )
 
 // HTTPModel talks to an OpenAI-compatible chat endpoint (llama.cpp server,
 // Ollama's /v1 compatibility layer, LM Studio, vLLM, etc.). It does not use
-// the vendor's native function-calling; instead Praxis defines its own compact
+// the vendor's native function-calling; instead LogFold defines its own compact
 // JSON action protocol and parses it, so behavior is identical across models.
 type HTTPModel struct {
 	BaseURL string // e.g. http://127.0.0.1:11434/v1
@@ -112,7 +112,7 @@ func (m *HTTPModel) Next(ctx context.Context, req Request) (Decision, error) {
 
 func systemPrompt(tools []tool.Spec) string {
 	specs, _ := json.MarshalIndent(tools, "", "  ")
-	return `You are Praxis, an autonomous DevOps engineer. You diagnose and fix broken
+	return `You are LogFold, an autonomous DevOps engineer. You diagnose and fix broken
 services by reasoning step by step and using tools.
 
 You have these tools (JSON schema):

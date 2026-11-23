@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Atishay8192261/praxis/internal/tool"
+	"github.com/Atishay8192261/logfold/internal/tool"
 )
 
 func TestParseDecision(t *testing.T) {

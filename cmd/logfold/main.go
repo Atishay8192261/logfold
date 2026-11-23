@@ -1,9 +1,9 @@
-// Command praxis is the CLI entrypoint for the Praxis agent runtime.
+// Command logfold is the CLI entrypoint for the LogFold agent runtime.
 //
-//	praxis run "<goal>"   run the DevOps agent headlessly on a goal
-//	praxis serve          launch the web workbench
-//	praxis version        print the version
-//	praxis help           show usage
+//	logfold run "<goal>"   run the DevOps agent headlessly on a goal
+//	logfold serve          launch the web workbench
+//	logfold version        print the version
+//	logfold help           show usage
 package main
 
 import (
@@ -16,20 +16,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Atishay8192261/praxis/internal/agent"
-	"github.com/Atishay8192261/praxis/internal/core"
-	"github.com/Atishay8192261/praxis/internal/journal"
-	"github.com/Atishay8192261/praxis/internal/memory"
-	"github.com/Atishay8192261/praxis/internal/playbook"
-	"github.com/Atishay8192261/praxis/internal/reason"
-	"github.com/Atishay8192261/praxis/internal/sandbox"
-	"github.com/Atishay8192261/praxis/internal/server"
-	"github.com/Atishay8192261/praxis/internal/tool"
-	"github.com/Atishay8192261/praxis/internal/tools/devops"
-	"github.com/Atishay8192261/praxis/internal/tools/mem"
+	"github.com/Atishay8192261/logfold/internal/agent"
+	"github.com/Atishay8192261/logfold/internal/core"
+	"github.com/Atishay8192261/logfold/internal/journal"
+	"github.com/Atishay8192261/logfold/internal/memory"
+	"github.com/Atishay8192261/logfold/internal/playbook"
+	"github.com/Atishay8192261/logfold/internal/reason"
+	"github.com/Atishay8192261/logfold/internal/sandbox"
+	"github.com/Atishay8192261/logfold/internal/server"
+	"github.com/Atishay8192261/logfold/internal/tool"
+	"github.com/Atishay8192261/logfold/internal/tools/devops"
+	"github.com/Atishay8192261/logfold/internal/tools/mem"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 func main() {
 	args := os.Args[1:]
@@ -46,12 +46,14 @@ func main() {
 		memoryCommand(args[1:])
 	case "scan":
 		scanCommand(args[1:])
+	case "compare":
+		compareCommand(args[1:])
 	case "version", "--version", "-v":
-		fmt.Printf("praxis %s\n", version)
+		fmt.Printf("logfold %s\n", version)
 	case "help", "--help", "-h":
 		usage(os.Stdout)
 	default:
-		fmt.Fprintf(os.Stderr, "praxis: unknown command %q\n\n", args[0])
+		fmt.Fprintf(os.Stderr, "logfold: unknown command %q\n\n", args[0])
 		usage(os.Stderr)
 		os.Exit(2)
 	}
@@ -71,7 +73,7 @@ func runCommand(args []string) {
 
 	goal := strings.TrimSpace(strings.Join(fs.Args(), " "))
 	if goal == "" {
-		fmt.Fprintln(os.Stderr, "praxis run: a goal is required, e.g. praxis run \"why is the web service down\"")
+		fmt.Fprintln(os.Stderr, "logfold run: a goal is required, e.g. logfold run \"why is the web service down\"")
 		os.Exit(2)
 	}
 
@@ -124,7 +126,7 @@ func runCommand(args []string) {
 	defer stop()
 
 	if !*quiet {
-		fmt.Printf("praxis %s\n", version)
+		fmt.Printf("logfold %s\n", version)
 		fmt.Printf("goal:      %s\n", goal)
 		fmt.Printf("workspace: %s\n", sb.Root)
 		fmt.Printf("backend:   %s\n", r.Name())
@@ -142,7 +144,7 @@ func runCommand(args []string) {
 
 	if memStore != nil {
 		if err := memStore.Save(*memPath); err != nil {
-			fmt.Fprintf(os.Stderr, "praxis: warning: could not save memory: %v\n", err)
+			fmt.Fprintf(os.Stderr, "logfold: warning: could not save memory: %v\n", err)
 		}
 	}
 
@@ -200,7 +202,7 @@ func scanCommand(args []string) {
 
 func memoryCommand(args []string) {
 	if len(args) == 0 {
-		fatal("usage: praxis memory <add|search> [flags] \"<text>\"")
+		fatal("usage: logfold memory <add|search> [flags] \"<text>\"")
 	}
 	sub, rest := args[0], args[1:]
 	fs := flag.NewFlagSet("memory", flag.ExitOnError)
@@ -217,7 +219,7 @@ func memoryCommand(args []string) {
 	case "add":
 		text := strings.TrimSpace(strings.Join(fs.Args(), " "))
 		if text == "" {
-			fatal("usage: praxis memory add \"<text>\"")
+			fatal("usage: logfold memory add \"<text>\"")
 		}
 		id := store.Add(text, nil)
 		if err := store.Save(*path); err != nil {
@@ -227,7 +229,7 @@ func memoryCommand(args []string) {
 	case "search":
 		q := strings.TrimSpace(strings.Join(fs.Args(), " "))
 		if q == "" {
-			fatal("usage: praxis memory search \"<query>\"")
+			fatal("usage: logfold memory search \"<query>\"")
 		}
 		hits := store.Search(q, *k)
 		if len(hits) == 0 {
@@ -263,7 +265,7 @@ func serveCommand(args []string) {
 	if strings.HasPrefix(shown, ":") {
 		shown = "localhost" + shown
 	}
-	fmt.Printf("praxis %s workbench\n", version)
+	fmt.Printf("logfold %s workbench\n", version)
 	fmt.Printf("  url:       http://%s\n", shown)
 	fmt.Printf("  workspace: %s\n", srv.Workspace())
 	fmt.Printf("  (Ctrl-C to stop)\n")
@@ -333,19 +335,20 @@ func splitCSV(s string) []string {
 }
 
 func fatal(format string, a ...any) {
-	fmt.Fprintf(os.Stderr, "praxis: "+format+"\n", a...)
+	fmt.Fprintf(os.Stderr, "logfold: "+format+"\n", a...)
 	os.Exit(1)
 }
 
 func usage(w *os.File) {
-	fmt.Fprintf(w, `praxis %s - a from-scratch AI-agent orchestration runtime
+	fmt.Fprintf(w, `logfold %s - a from-scratch AI-agent orchestration runtime
 
 Usage:
-  praxis <command> [arguments]
+  logfold <command> [arguments]
 
 Commands:
   run "<goal>"          run the DevOps agent on a goal (headless)
   scan                  fast parallel, model-free workspace triage (graph playbook)
+  compare [-baseline file] <logs...>  stream logs and emit a JSON incident report
   memory add "<text>"   store a note in long-term memory
   memory search "<q>"   search long-term memory
   serve                 launch the web workbench (default 127.0.0.1:7777)
@@ -367,7 +370,7 @@ Environment (model backend):
   PRAXIS_MODEL_NAME  model identifier
   PRAXIS_MODEL_KEY   optional bearer token
 
-Praxis has zero third-party dependencies. With no model configured it uses a
+LogFold has zero third-party dependencies. With no model configured it uses a
 deterministic heuristic backend, so it runs out of the box.
 `, version)
 }

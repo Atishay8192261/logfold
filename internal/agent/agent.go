@@ -16,11 +16,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Atishay8192261/praxis/internal/core"
-	"github.com/Atishay8192261/praxis/internal/journal"
-	"github.com/Atishay8192261/praxis/internal/memory"
-	"github.com/Atishay8192261/praxis/internal/reason"
-	"github.com/Atishay8192261/praxis/internal/tool"
+	"github.com/Atishay8192261/logfold/internal/core"
+	"github.com/Atishay8192261/logfold/internal/journal"
+	"github.com/Atishay8192261/logfold/internal/memory"
+	"github.com/Atishay8192261/logfold/internal/reason"
+	"github.com/Atishay8192261/logfold/internal/tool"
 )
 
 // Agent wires a reasoner, a tool registry, and a journal into a runnable loop.

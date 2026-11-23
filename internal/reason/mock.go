@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Atishay8192261/praxis/internal/core"
+	"github.com/Atishay8192261/logfold/internal/core"
 )
 
 // Heuristic is a deterministic, model-free reasoner that performs generic
